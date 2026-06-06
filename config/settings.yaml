@@ -1,0 +1,56 @@
+# ============================================================
+#  Configuración del Dashboard de Acciones
+# ============================================================
+
+portfolio:
+  base_currency: EUR
+
+  # --- IBKR ---
+  # Las posiciones de Interactive Brokers se descargan automáticamente
+  # vía Flex Web Service (solo lectura). Configura los secrets:
+  #   IBKR_FLEX_TOKEN   y   IBKR_FLEX_QUERY_ID
+  # (Ver README -> "Conectar IBKR")
+  ibkr_enabled: true
+
+  # --- Revolut ---
+  # Revolut no expone un API automatizable aquí. Dos opciones:
+  #   1) Lista tus posiciones a mano abajo (revolut_holdings)
+  #   2) Exporta un CSV y déjalo en data/revolut_positions.csv
+  #      (columnas: ticker,quantity,avg_price)
+  revolut_holdings:
+    - ticker: MELI
+      quantity: 3.8
+    - ticker: NVDA
+      quantity: 20.89
+    - ticker: CLS
+      quantity: 9.52
+    - ticker: FNV
+      quantity: 15
+    - ticker: META
+      quantity: 5.18
+
+  # Tickers extra a vigilar (solo noticias/insights, sin posición)
+  watchlist: []
+    # - MSFT
+
+market:
+  # Stooq usa sufijos por bolsa. Tickers US planos reciben ".us" automático.
+  # Añade overrides para bolsas no-US (ej. acciones europeas).
+  symbol_overrides: {}
+    # CLS: cls.us
+    # NVDA: nvda.us
+
+news:
+  max_items_per_ticker: 4
+  lookback_days: 5
+
+insights:
+  # Pon use_llm: true y define ANTHROPIC_API_KEY para insights enriquecidos
+  use_llm: false
+  llm_model: "claude-haiku-4-5-20251001"
+
+delivery:
+  email_enabled: true
+  email_to: "andres.ausias@gmail.com"
+  email_subject_prefix: "Tu Dashboard de Acciones"
+  web_output: "docs/index.html"

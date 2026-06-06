@@ -1,0 +1,45 @@
+name: Stock Dashboard
+
+on:
+  schedule:
+    # Horas en UTC. Mercado US: ~13:30 UTC apertura, ~20:00 UTC cierre (horario de verano).
+    - cron: "0 13 * * 1-5"   # pre-apertura (mañana)
+    - cron: "15 20 * * 1-5"  # post-cierre (tarde/noche)
+  workflow_dispatch: {}        # permite ejecutarlo a mano desde la pestaña Actions
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Generar dashboard y enviar email
+        env:
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python src/main.py
+
+      - name: Publicar dashboard web (commit de docs/)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          if git diff --staged --quiet; then
+            echo "Sin cambios en el dashboard."
+          else
+            git commit -m "chore: actualizar dashboard $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
