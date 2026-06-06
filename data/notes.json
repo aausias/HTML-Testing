@@ -1,0 +1,33 @@
+{
+  "_comment": "Notas editoriales por ticker: próximos resultados, estimado de consenso y horizontes corto/mediano plazo. Actualízalas tras cada earnings. Si insights.use_llm=true, el corto/mediano plazo puede autogenerarse, pero earnings_date y estimate conviene mantenerlos a mano.",
+  "CLS": {
+    "earnings_date": "27 jul 2026 (antes de apertura) · Q2 2026",
+    "estimate": "BPA aj. ~$2,29 · ingresos guía $4,15–4,45B (≈+49% interanual)",
+    "short_term": "Sobreextendida tras +44% YTD y muy volátil; puede consolidar antes del 27 jul. Clave: que confirme la guía elevada.",
+    "medium_term": "Beneficiaria directa del capex de IA; si ejecuta la guía 2026 y la extiende a 2027, hay recorrido. Riesgo: depende de pocos hyperscalers."
+  },
+  "NVDA": {
+    "earnings_date": "26 ago 2026 (tras cierre) · Q2 FY27",
+    "estimate": "BPA ~$2,07 · ingresos ~$91,6B (guía $91B ±2%)",
+    "short_term": "Consolida en zona media-alta del rango, sin catalizador hasta agosto. Sensible a titulares de China/exportaciones.",
+    "medium_term": "Líder del compute IA con demanda visible (Blackwell, $1B capex 2027) y valoración razonable. Tesis sólida salvo shock regulatorio o de capex."
+  },
+  "MELI": {
+    "earnings_date": "5 ago 2026 · Q2 2026",
+    "estimate": "BPA ~$8,7 (rango $8,68–8,95)",
+    "short_term": "Técnicamente débil, cerca de mínimos 52s; el rebote depende del sentimiento LatAm y de despejar dudas de margen en agosto.",
+    "medium_term": "Ingresos +49% y expansión en fintech/comercio; si revaloriza el múltiplo comprimido, upside notable. Riesgo: divisa/macro Argentina-Brasil."
+  },
+  "FNV": {
+    "earnings_date": "12 ago 2026 (tras cierre) · Q2 2026",
+    "estimate": "BPA Q2 ~$2,4 aprox. · FY 2026 ~$8,98 (Q1 fue $2,43)",
+    "short_term": "La más estable (defensiva); cobra dividendo (ex 11 jun). Se mueve con el precio del oro más que con noticias propias.",
+    "medium_term": "Royalty/streaming de bajo riesgo operativo, $3,4B para adquisiciones y reanudación de Cobre Panamá (Q3). Diversifica tu peso en IA."
+  },
+  "META": {
+    "earnings_date": "29 jul 2026 (tras cierre) · Q2 2026",
+    "estimate": "BPA ~$7,18 · ingresos ~$60,2B (guía $58–61B)",
+    "short_term": "Presión bajista por el shock de capex y la posible emisión de acciones; cerca de mínimos 52s. Rebotes posibles si modera el mensaje.",
+    "medium_term": "Publicidad sólida y caja fuerte, pero la tesis depende de que el gasto en IA dé retorno. Binaria: monetiza la IA vs destruye margen."
+  }
+}

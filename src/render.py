@@ -58,6 +58,33 @@ def _alloc_bar(stocks, total):
       <table role="presentation" cellpadding="0" cellspacing="0" style="padding-top:8px;font-size:12px;color:#cbd5e1"><tr>{legend}</tr></table>"""
 
 
+def _notes_block(notes):
+    """Bloque de próximos resultados + horizontes corto/mediano plazo."""
+    if not notes:
+        return ""
+    ed = notes.get("earnings_date")
+    est = notes.get("estimate")
+    st = notes.get("short_term")
+    mt = notes.get("medium_term")
+    head = ""
+    if ed:
+        head += f'<div style="font-size:13px;color:#334155"><b>📅 Resultados:</b> {html.escape(ed)}</div>'
+    if est:
+        head += f'<div style="font-size:13px;color:#334155;padding-top:2px"><b>🎯 Estimado:</b> {html.escape(est)}</div>'
+    horizons = ""
+    if st or mt:
+        horizons = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px"><tr>'
+            f'<td valign="top" width="50%" style="padding-right:5px"><div style="background:#eff6ff;border-radius:8px;padding:9px 11px;font-size:13px;color:#1e3a8a;line-height:1.45"><b>⏱ Corto plazo</b><br>{html.escape(st or "—")}</div></td>'
+            f'<td valign="top" width="50%" style="padding-left:5px"><div style="background:#ecfdf5;border-radius:8px;padding:9px 11px;font-size:13px;color:#065f46;line-height:1.45"><b>📈 Mediano plazo</b><br>{html.escape(mt or "—")}</div></td>'
+            '</tr></table>'
+        )
+    if not head and not horizons:
+        return ""
+    return ('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border-top:1px solid #eef2f7">'
+            f'<tr><td style="padding-top:10px">{head}{horizons}</td></tr></table>')
+
+
 def _badge(bias):
     bg = "#16a34a" if bias >= 2 else "#dc2626" if bias <= -2 else "#d97706"
     label = "Sesgo alcista" if bias >= 2 else "Sesgo bajista / cautela" if bias <= -2 else "Sesgo mixto / lateral"
@@ -113,6 +140,7 @@ def render(stocks, totals, generated_at=None):
             {_range_bar(q)}
             {_badge(ins.get('bias', 0))}
             {insight_block}
+            {_notes_block(s.get('notes'))}
             <div style="font-size:13px;padding-top:10px">{news_links}</div>
           </td></tr></table>
         </td></tr>"""

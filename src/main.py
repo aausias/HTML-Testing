@@ -27,6 +27,14 @@ from emailer import send_email
 from names import name_for
 
 _SNAPSHOT = os.path.join(os.path.dirname(__file__), "..", "data", "holdings_snapshot.json")
+_NOTES = os.path.join(os.path.dirname(__file__), "..", "data", "notes.json")
+
+
+def _load_notes():
+    if os.path.exists(_NOTES):
+        with open(_NOTES, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
 
 def _load_ibkr(cfg):
@@ -52,6 +60,7 @@ def main():
     ibkr_pos = _load_ibkr(cfg)
     revolut_pos = revolut.load_holdings(cfg)
     watchlist = cfg.get("portfolio", {}).get("watchlist", [])
+    notes = _load_notes()
 
     consolidated = portfolio.consolidate(ibkr_pos, revolut_pos, watchlist)
 
@@ -76,6 +85,7 @@ def main():
                 "quote": dict(quote or {}, currency=(quote or {}).get("currency", "USD")),
                 "news": headlines,
                 "insight": insight,
+                "notes": notes.get(ticker),
                 "position": {
                     "quantity": item["quantity"],
                     "sources": item["sources"],
