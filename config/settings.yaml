@@ -45,8 +45,9 @@ news:
   lookback_days: 5
 
 insights:
-  # Pon use_llm: true y define ANTHROPIC_API_KEY para insights enriquecidos
-  use_llm: false
+  # use_llm: true regenera el corto/mediano plazo en cada envío con la API de
+  # Claude (requiere ANTHROPIC_API_KEY). Sin la key, usa las notas curadas.
+  use_llm: true
   llm_model: "claude-haiku-4-5-20251001"
 
 delivery:

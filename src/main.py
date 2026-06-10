@@ -64,19 +64,37 @@ def main():
 
     consolidated = portfolio.consolidate(ibkr_pos, revolut_pos, watchlist)
 
+    # Tipo de cambio USD -> moneda base (para mostrar valor y %)
+    fx = market_data.get_fx(base_ccy)
+    sym = {"EUR": "€", "GBP": "£", "USD": "$"}.get(base_ccy.upper(), "")
+    if not fx:  # sin FX -> mostramos en USD
+        fx, sym = 1.0, "$"
+
+    use_llm = cfg.get("insights", {}).get("use_llm")
+    llm_model = cfg.get("insights", {}).get("llm_model", "claude-haiku-4-5-20251001")
+
     stocks = []
-    total_value = 0.0
     for item in consolidated:
         ticker = item["ticker"]
         quote = market_data.get_quote(ticker, overrides)
         headlines = news_mod.get_news(ticker, cfg["news"].get("max_items_per_ticker", 4))
         insight = insights.build(ticker, quote, headlines, cfg)
+        note = dict(notes.get(ticker) or {})
 
-        value_label = None
+        # IA: regenera resumen + corto/mediano plazo (si está activado y hay API key)
+        if use_llm:
+            ai = insights.llm_analyze(ticker, quote, headlines, note, llm_model)
+            if ai:
+                if ai.get("summary"):
+                    insight["llm_summary"] = ai["summary"]
+                if ai.get("short_term"):
+                    note["short_term"] = ai["short_term"]
+                if ai.get("medium_term"):
+                    note["medium_term"] = ai["medium_term"]
+
+        value_base = None
         if quote and item["quantity"]:
-            val = quote["last"] * item["quantity"]
-            total_value += val
-            value_label = f"~{val:,.0f} {quote.get('currency', 'USD')}"
+            value_base = quote["last"] * item["quantity"] * fx
 
         stocks.append(
             {
@@ -85,24 +103,25 @@ def main():
                 "quote": dict(quote or {}, currency=(quote or {}).get("currency", "USD")),
                 "news": headlines,
                 "insight": insight,
-                "notes": notes.get(ticker),
+                "notes": note,
                 "position": {
                     "quantity": item["quantity"],
                     "sources": item["sources"],
-                    "value_label": value_label,
+                    "value_base": value_base,
                 },
             }
         )
 
-    # Ordena: primero posiciones por valor, luego watchlist
-    stocks.sort(key=lambda s: (s["position"]["quantity"] == 0, -(s["quote"].get("last") or 0) * s["position"]["quantity"]))
+    # Ordena por valor (desc); watchlist al final
+    stocks.sort(key=lambda s: (s["position"]["quantity"] == 0, -(s["position"]["value_base"] or 0)))
 
+    total_value = sum(s["position"]["value_base"] or 0 for s in stocks)
     totals = {
+        "Patrimonio en acciones": (f"{sym}{total_value:,.0f}".replace(",", ".")) if total_value else "—",
         "Posiciones": str(sum(1 for s in stocks if s["position"]["quantity"])),
-        "Fuentes": "IBKR + Revolut",
     }
 
-    htmlout = render.render(stocks, totals)
+    htmlout = render.render(stocks, totals, base_symbol=sym)
     out_path = cfg["delivery"].get("web_output", "docs/index.html")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:

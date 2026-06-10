@@ -63,18 +63,30 @@ def rule_based(ticker, quote, news):
     return {"outlook": outlook, "bias": bias, "signals": signals}
 
 
-def enrich_with_llm(ticker, quote, news, base, model):
+def llm_analyze(ticker, quote, news, notes, model):
+    """Pide a Claude un JSON con {summary, short_term, medium_term} en español.
+
+    Devuelve el dict o None si no hay API key o falla. Es objetivo y no da
+    recomendaciones de compra/venta.
+    """
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return base
-    headlines = "\n".join(f"- {n['title']}" for n in news[:6])
+        return None
     q = quote or {}
+    notes = notes or {}
+    headlines = "\n".join(f"- {n['title']}" for n in news[:6]) or "- (sin titulares)"
     prompt = (
-        f"Eres analista de inversiones. En 2-3 frases en español, de forma objetiva y "
-        f"sin recomendar comprar/vender, resume qué podría pasar con {ticker}.\n"
-        f"Datos: último {q.get('last')}, YTD {q.get('perf_ytd')}%, 1m {q.get('perf_1m')}%, "
-        f"rango 52s {q.get('low_52w')}-{q.get('high_52w')}.\n"
-        f"Titulares:\n{headlines}\n"
+        f"Eres analista financiero. Responde SOLO con un objeto JSON válido (sin texto extra) "
+        f"con las claves \"summary\", \"short_term\" y \"medium_term\", en español, objetivo y "
+        f"SIN recomendar comprar/vender.\n"
+        f"- summary: 2 frases sobre qué podría pasar con {ticker}.\n"
+        f"- short_term: 1-2 frases de perspectiva a corto plazo (semanas).\n"
+        f"- medium_term: 1-2 frases de perspectiva a mediano plazo (6-18 meses).\n\n"
+        f"Datos de {ticker}: último {q.get('last')}, YTD {q.get('perf_ytd')}%, "
+        f"1m {q.get('perf_1m')}%, rango 52s {q.get('low_52w')}-{q.get('high_52w')}.\n"
+        f"Próximos resultados: {notes.get('earnings_date', 'n/d')}. "
+        f"Estimado: {notes.get('estimate', 'n/d')}.\n"
+        f"Titulares recientes:\n{headlines}\n"
     )
     try:
         r = requests.post(
@@ -85,27 +97,24 @@ def enrich_with_llm(ticker, quote, news, base, model):
                 "content-type": "application/json",
             },
             data=json.dumps(
-                {
-                    "model": model,
-                    "max_tokens": 300,
-                    "messages": [{"role": "user", "content": prompt}],
-                }
+                {"model": model, "max_tokens": 600, "messages": [{"role": "user", "content": prompt}]}
             ),
-            timeout=40,
+            timeout=45,
         )
         txt = r.json()["content"][0]["text"].strip()
-        if txt:
-            base = dict(base)
-            base["llm_summary"] = txt
+        if txt.startswith("```"):
+            txt = txt.strip("`")
+            txt = txt[txt.find("{"):]
+        data = json.loads(txt[txt.find("{"): txt.rfind("}") + 1])
+        return {
+            "summary": data.get("summary"),
+            "short_term": data.get("short_term"),
+            "medium_term": data.get("medium_term"),
+        }
     except Exception:
-        pass
-    return base
+        return None
 
 
 def build(ticker, quote, news, cfg):
-    base = rule_based(ticker, quote, news)
-    if cfg.get("insights", {}).get("use_llm"):
-        base = enrich_with_llm(
-            ticker, quote, news, base, cfg["insights"].get("llm_model", "claude-haiku-4-5-20251001")
-        )
-    return base
+    """Insight base por reglas (la parte LLM se aplica en main para enriquecer notas)."""
+    return rule_based(ticker, quote, news)

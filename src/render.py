@@ -45,7 +45,7 @@ def _alloc_bar(stocks, total):
         return ""
     segs, legend = "", ""
     for i, s in enumerate(stocks):
-        val = s.get("_value") or 0
+        val = (s.get("position") or {}).get("value_base") or 0
         if val <= 0:
             continue
         w = round(val / total * 100, 1)
@@ -91,15 +91,10 @@ def _badge(bias):
     return f'<div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:{bg}">{label}</div>'
 
 
-def render(stocks, totals, generated_at=None):
+def render(stocks, totals, generated_at=None, base_symbol="$"):
     generated_at = generated_at or dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
-    # valor por acción para la barra de asignación
-    total_val = 0.0
-    for s in stocks:
-        q = s.get("quote") or {}
-        s["_value"] = (q.get("last") or 0) * (s.get("position") or {}).get("quantity", 0)
-        total_val += s["_value"]
+    total_val = sum((s.get("position") or {}).get("value_base") or 0 for s in stocks)
 
     cards = ""
     for s in stocks:
@@ -108,11 +103,21 @@ def render(stocks, totals, generated_at=None):
         pos = s.get("position") or {}
         ccy = html.escape(q.get("currency", "USD"))
 
+        # valor de la posición y % de la cartera
+        vb = pos.get("value_base")
+        value_html = ""
+        if vb:
+            weight = (vb / total_val * 100) if total_val else 0
+            money = f"{base_symbol}{vb:,.0f}".replace(",", ".")
+            value_html = (
+                f'<div style="font-size:15px;font-weight:800;color:#0f172a;padding-top:5px">{money}</div>'
+                f'<div style="font-size:12px;color:#64748b">{weight:.1f}% de la cartera</div>'
+            )
+
         pos_line = ""
         if pos.get("quantity"):
-            vl = f' · {html.escape(pos["value_label"])}' if pos.get("value_label") else ""
             pos_line = (f'<div style="font-size:12px;color:#475569;padding-top:3px">'
-                        f'{_fmt(pos["quantity"], 4)} acc. · {html.escape(", ".join(pos.get("sources", [])))}{vl}</div>')
+                        f'{_fmt(pos["quantity"], 4)} acc. · {html.escape(", ".join(pos.get("sources", [])))}</div>')
 
         signals = "".join(f"<li style='margin:3px 0'>{html.escape(x)}</li>" for x in ins.get("signals", []))
         llm = ins.get("llm_summary")
@@ -135,7 +140,7 @@ def render(stocks, totals, generated_at=None):
               <td align="left" valign="top"><span style="font-size:19px;font-weight:800">{html.escape(s['ticker'])}</span>
                 <span style="color:#64748b">{html.escape(s.get('name',''))}</span>{pos_line}</td>
               <td align="right" valign="top" style="white-space:nowrap"><span style="font-size:19px;font-weight:800">{_fmt(q.get('last'))} {ccy}</span>
-                <div style="font-size:12px;padding-top:3px">YTD {_pct(q.get('perf_ytd'))}</div></td>
+                <div style="font-size:12px;padding-top:3px">YTD {_pct(q.get('perf_ytd'))}</div>{value_html}</td>
             </tr></table>
             {_range_bar(q)}
             {_badge(ins.get('bias', 0))}

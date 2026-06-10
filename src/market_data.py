@@ -11,6 +11,24 @@ import io
 import requests
 
 
+def get_fx(base_ccy):
+    """USD -> base_ccy. Devuelve el multiplicador (p.ej. 0.87 para EUR) o None."""
+    base = (base_ccy or "USD").upper()
+    if base == "USD":
+        return 1.0
+    try:
+        # eurusd = USD por 1 EUR -> USD->EUR = 1/eurusd
+        url = f"https://stooq.com/q/l/?s={base.lower()}usd&f=sd2t2ohlcv&h&e=csv"
+        r = requests.get(url, timeout=20)
+        rows = list(csv.DictReader(io.StringIO(r.text)))
+        px = float(rows[0]["Close"])
+        if px > 0:
+            return round(1.0 / px, 6)
+    except Exception:
+        pass
+    return None
+
+
 def _stooq_symbol(ticker, overrides):
     if ticker in overrides:
         return overrides[ticker]
