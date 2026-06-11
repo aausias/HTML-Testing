@@ -129,28 +129,57 @@ def _stats_row(q, pos, base_symbol):
     return out
 
 
-def _sparkline(q):
+def _sparkline(q, base_symbol=""):
     """Mini-gráfico de tendencia (~3 meses) con barras de color, email-safe."""
     spark = q.get("spark") or []
     if len(spark) < 3:
         return ""
+    # Menos barras y más anchas para que no se vea apretado
+    if len(spark) > 18:
+        step = len(spark) / 18.0
+        spark = [spark[int(i * step)] for i in range(18)]
     lo, hi = min(spark), max(spark)
     rng = (hi - lo) or 1
     trend = q.get("trend", "lateral")
     color = {"alcista": "#16a34a", "bajista": "#dc2626"}.get(trend, "#64748b")
+    H = 64  # alto del gráfico (antes 34) -> más legible
     w = round(100.0 / len(spark), 3)
     bars = "".join(
-        f'<td valign="bottom" width="{w}%" style="padding:0">'
-        f'<div style="height:{4 + round((v - lo) / rng * 28)}px;background:{color};opacity:.85;margin:0 1px;border-radius:1px"></div></td>'
+        f'<td valign="bottom" width="{w}%" style="padding:0 1px">'
+        f'<div style="height:{10 + round((v - lo) / rng * (H - 12))}px;background:{color};opacity:.9;border-radius:2px 2px 0 0"></div></td>'
         for v in spark
     )
+    ccy = html.escape(q.get("currency", ""))
     cap = f'Tendencia ~3m: <b style="color:{color}">{html.escape(trend)}</b>'
     if "above_sma50" in q:
         cap += f' · {"por encima" if q.get("above_sma50") else "por debajo"} de su media de 50 días'
     return (
-        f'<div style="padding-top:12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="height:34px"><tr>{bars}</tr></table></div>'
-        f'<div style="font-size:11px;color:#94a3b8;padding-top:4px">📈 {cap}</div>'
+        f'<div style="padding-top:14px;background:#fafafa;border-radius:8px;padding:12px 10px 6px">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="height:{H}px;border-bottom:1px solid #e5e7eb"><tr>{bars}</tr></table>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding-top:4px"><tr>'
+        f'<td style="font-size:10px;color:#94a3b8">{lo} {ccy}</td>'
+        f'<td align="right" style="font-size:10px;color:#94a3b8">máx {hi} {ccy}</td></tr></table>'
+        f'</div>'
+        f'<div style="font-size:11px;color:#94a3b8;padding-top:6px">📈 {cap}</div>'
     )
+
+
+def _levels_box(plan):
+    """Cajas prominentes con Stop y Profit sugeridos (precio)."""
+    if not plan or plan.get("stop") is None:
+        return ""
+    ccy = html.escape(plan.get("currency") or "")
+    return f"""
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px"><tr>
+      <td valign="top" width="50%" style="padding-right:5px"><div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 11px">
+        <div style="font-size:11px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🛑 Stop sugerido</div>
+        <div style="font-size:17px;font-weight:800;color:#dc2626;padding-top:2px">{ccy} {plan.get('stop')}</div>
+        <div style="font-size:11px;color:#b91c1c">−{plan.get('stop_pct')}% del precio actual</div></div></td>
+      <td valign="top" width="50%" style="padding-left:5px"><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 11px">
+        <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🎯 Profit sugerido</div>
+        <div style="font-size:17px;font-weight:800;color:#16a34a;padding-top:2px">{ccy} {plan.get('target')}</div>
+        <div style="font-size:11px;color:#15803d">+{plan.get('target_pct')}% del precio actual</div></div></td>
+    </tr></table>"""
 
 
 def _plan_section(stocks):
@@ -238,8 +267,9 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
                 <div style="font-size:12px;padding-top:3px">Hoy {_pct(q.get('change_pct'))} · YTD {_pct(q.get('perf_ytd'))}</div>{value_html}</td>
             </tr></table>
             {_range_bar(q)}
-            {_sparkline(q)}
+            {_sparkline(q, base_symbol)}
             {_stats_row(q, pos, base_symbol)}
+            {_levels_box(s.get('plan'))}
             {_badge(ins.get('bias', 0))}
             {insight_block}
             {_notes_block(s.get('notes'))}
