@@ -129,6 +129,63 @@ def _stats_row(q, pos, base_symbol):
     return out
 
 
+def _sparkline(q):
+    """Mini-gráfico de tendencia (~3 meses) con barras de color, email-safe."""
+    spark = q.get("spark") or []
+    if len(spark) < 3:
+        return ""
+    lo, hi = min(spark), max(spark)
+    rng = (hi - lo) or 1
+    trend = q.get("trend", "lateral")
+    color = {"alcista": "#16a34a", "bajista": "#dc2626"}.get(trend, "#64748b")
+    w = round(100.0 / len(spark), 3)
+    bars = "".join(
+        f'<td valign="bottom" width="{w}%" style="padding:0">'
+        f'<div style="height:{4 + round((v - lo) / rng * 28)}px;background:{color};opacity:.85;margin:0 1px;border-radius:1px"></div></td>'
+        for v in spark
+    )
+    cap = f'Tendencia ~3m: <b style="color:{color}">{html.escape(trend)}</b>'
+    if "above_sma50" in q:
+        cap += f' · {"por encima" if q.get("above_sma50") else "por debajo"} de su media de 50 días'
+    return (
+        f'<div style="padding-top:12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="height:34px"><tr>{bars}</tr></table></div>'
+        f'<div style="font-size:11px;color:#94a3b8;padding-top:4px">📈 {cap}</div>'
+    )
+
+
+def _plan_section(stocks):
+    rows = ""
+    for s in stocks:
+        pl = s.get("plan")
+        pos = s.get("position") or {}
+        if not pl or not pos.get("quantity"):
+            continue
+        ccy = html.escape(pl.get("currency") or "")
+        act = pl.get("action", "MANTENER")
+        color = {"TOMAR BENEFICIOS": "#16a34a", "VIGILAR / STOP": "#dc2626"}.get(act, "#d97706")
+        outlook = html.escape(pl.get("outlook") or "")
+        rows += f"""
+        <tr><td style="padding:12px 0;border-top:1px solid #1f2937">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td align="left" valign="middle"><span style="font-size:15px;font-weight:800;color:#fff">{html.escape(s['ticker'])}</span>
+              <span style="color:#94a3b8;font-size:12px"> {html.escape(s.get('name',''))}</span></td>
+            <td align="right" valign="middle"><span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;background:{color}">{html.escape(act)}</span></td>
+          </tr></table>
+          <div style="font-size:12px;color:#cbd5e1;padding-top:6px">🛑 Stop: {ccy} {pl.get('stop')} (−{pl.get('stop_pct')}%) &nbsp;·&nbsp; 🎯 Objetivo: {ccy} {pl.get('target')} (+{pl.get('target_pct')}%)</div>
+          <div style="font-size:12px;color:#94a3b8;padding-top:4px">🔭 {outlook}</div>
+        </td></tr>"""
+    if not rows:
+        return ""
+    return f"""
+    <tr><td style="padding:16px 0">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border-radius:14px"><tr><td style="padding:20px">
+        <div style="font-size:16px;font-weight:800;color:#fff">🎯 Plan de acción <span style="font-size:11px;color:#94a3b8;font-weight:600">· orientativo</span></div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>
+        <div style="font-size:11px;color:#64748b;padding-top:14px;line-height:1.5">⚠️ Etiquetas y niveles generados automáticamente (reglas + IA) a partir del rango de 52 semanas y tu P&amp;L. <b>No es asesoramiento financiero</b> ni una recomendación de compra/venta — son una guía para tu propia decisión.</div>
+      </td></tr></table>
+    </td></tr>"""
+
+
 def render(stocks, totals, generated_at=None, base_symbol="$"):
     generated_at = generated_at or dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
@@ -181,6 +238,7 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
                 <div style="font-size:12px;padding-top:3px">Hoy {_pct(q.get('change_pct'))} · YTD {_pct(q.get('perf_ytd'))}</div>{value_html}</td>
             </tr></table>
             {_range_bar(q)}
+            {_sparkline(q)}
             {_stats_row(q, pos, base_symbol)}
             {_badge(ins.get('bias', 0))}
             {insight_block}
@@ -214,6 +272,7 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
     </td></tr></table>
   </td></tr>
   {cards}
+  {_plan_section(stocks)}
   <tr><td style="padding:8px 8px 0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.5">
     Las barras muestran la posición del precio en su rango de 52 semanas.<br>
     Información con fines informativos, <b>no es asesoramiento de inversión</b>.<br>

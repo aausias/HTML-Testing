@@ -114,6 +114,7 @@ def main():
         note = dict(notes.get(ticker) or {})
 
         # IA: regenera resumen + corto/mediano plazo (si está activado y hay API key)
+        ai = None
         if use_llm:
             ai = insights.llm_analyze(ticker, quote, headlines, note, llm_model)
             if ai:
@@ -141,6 +142,14 @@ def main():
             pos["pnl_base"] = to_base((last - avg_cost) * cost_qty, ccy)
             pos["pnl_partial"] = cost_qty < qty - 1e-6  # parte de la posición sin coste conocido
 
+        # Plan de acción (niveles por reglas + acción/panorama de la IA si está)
+        plan = insights.action_levels(quote, pos)
+        if plan:
+            if ai and ai.get("action"):
+                plan["action"] = ai["action"]
+            plan["outlook"] = (ai.get("outlook") if ai else None) or note.get("medium_term")
+            plan["currency"] = ccy
+
         stocks.append(
             {
                 "ticker": ticker,
@@ -150,6 +159,7 @@ def main():
                 "insight": insight,
                 "notes": note,
                 "position": pos,
+                "plan": plan,
             }
         )
 

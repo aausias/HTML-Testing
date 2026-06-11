@@ -45,12 +45,29 @@ def _stooq_symbol(ticker, overrides):
     return t if "." in t else f"{t}.us"
 
 
+def _spark(values, n=24):
+    """Submuestrea una serie a ~n puntos para el mini-gráfico de tendencia."""
+    if len(values) <= n:
+        return [round(v, 2) for v in values]
+    step = len(values) / n
+    return [round(values[int(i * step)], 2) for i in range(n)]
+
+
 def _from_series(ticker, closes, dates, opens=None, currency="USD", source="Stooq"):
     """Construye el dict de métricas a partir de series de cierres (+ aperturas)."""
     if len(closes) < 2:
         return None
     last, prev = closes[-1], closes[-2]
     today_open = opens[-1] if opens and opens[-1] else None
+
+    # Tendencia: serie reciente (~3 meses) + medias móviles 20/50
+    spark = _spark(closes[-63:])
+    sma20 = sum(closes[-20:]) / len(closes[-20:]) if len(closes) >= 5 else None
+    sma50 = sum(closes[-50:]) / len(closes[-50:]) if len(closes) >= 10 else None
+    if sma20 and sma50:
+        trend = "alcista" if last > sma20 > sma50 else "bajista" if last < sma20 < sma50 else "lateral"
+    else:
+        trend = "lateral"
 
     def perf(n):
         return round((last / closes[-n] - 1) * 100, 2) if len(closes) >= n else None
@@ -75,6 +92,9 @@ def _from_series(ticker, closes, dates, opens=None, currency="USD", source="Stoo
         "perf_ytd": ytd,
         "high_52w": round(max(window), 2),
         "low_52w": round(min(window), 2),
+        "spark": spark,
+        "trend": trend,
+        "above_sma50": bool(sma50 and last >= sma50),
         "as_of": dates[-1],
         "currency": currency,
         "source": source,
