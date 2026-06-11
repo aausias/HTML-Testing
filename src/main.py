@@ -88,11 +88,19 @@ def main():
 
     consolidated = portfolio.consolidate(ibkr_pos, revolut_pos, watchlist)
 
-    # Tipo de cambio USD -> moneda base (para mostrar valor y %)
-    fx = market_data.get_fx(base_ccy)
-    sym = {"EUR": "€", "GBP": "£", "USD": "$"}.get(base_ccy.upper(), "")
-    if not fx:  # sin FX -> mostramos en USD
-        fx, sym = 1.0, "$"
+    base = base_ccy.upper()
+    sym = {"EUR": "€", "GBP": "£", "USD": "$"}.get(base, "")
+    _fx_cache = {}
+
+    def to_base(amount, ccy):
+        """Convierte `amount` (en `ccy`) a la moneda base. None si no hay tasa."""
+        if amount is None:
+            return None
+        ccy = (ccy or "USD").upper()
+        if ccy not in _fx_cache:
+            _fx_cache[ccy] = market_data.get_fx(ccy, base)
+        r = _fx_cache[ccy]
+        return amount * r if r is not None else None
 
     use_llm = cfg.get("insights", {}).get("use_llm")
     llm_model = cfg.get("insights", {}).get("llm_model", "claude-haiku-4-5-20251001")
@@ -116,23 +124,32 @@ def main():
                 if ai.get("medium_term"):
                     note["medium_term"] = ai["medium_term"]
 
-        value_base = None
-        if quote and item["quantity"]:
-            value_base = quote["last"] * item["quantity"] * fx
+        ccy = (quote or {}).get("currency", "USD")
+        last = (quote or {}).get("last")
+        qty = item["quantity"]
+
+        value_base = to_base(last * qty, ccy) if (quote and qty) else None
+
+        # P&L vs precio medio de compra (con los lotes que tienen coste conocido)
+        cost_qty = sum(l["quantity"] for l in item["lots"] if l.get("avg_price"))
+        cost_native = sum(l["quantity"] * l["avg_price"] for l in item["lots"] if l.get("avg_price"))
+        pos = {"quantity": qty, "sources": item["sources"], "value_base": value_base, "currency": ccy}
+        if cost_qty > 0 and last:
+            avg_cost = cost_native / cost_qty
+            pos["avg_cost"] = round(avg_cost, 2)
+            pos["pnl_pct"] = round((last / avg_cost - 1) * 100, 2)
+            pos["pnl_base"] = to_base((last - avg_cost) * cost_qty, ccy)
+            pos["pnl_partial"] = cost_qty < qty - 1e-6  # parte de la posición sin coste conocido
 
         stocks.append(
             {
                 "ticker": ticker,
                 "name": name_for(ticker),
-                "quote": dict(quote or {}, currency=(quote or {}).get("currency", "USD")),
+                "quote": dict(quote or {}, currency=ccy),
                 "news": headlines,
                 "insight": insight,
                 "notes": note,
-                "position": {
-                    "quantity": item["quantity"],
-                    "sources": item["sources"],
-                    "value_base": value_base,
-                },
+                "position": pos,
             }
         )
 

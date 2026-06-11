@@ -91,6 +91,44 @@ def _badge(bias):
     return f'<div style="display:inline-block;margin-top:10px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:{bg}">{label}</div>'
 
 
+def _stats_row(q, pos, base_symbol):
+    """Línea de mercado (apertura/último/cierre + var. día) y P&L de mi posición."""
+    ccy = html.escape(q.get("currency", ""))
+    out = ""
+
+    mk = []
+    if q.get("open") is not None:
+        mk.append(f"Apertura {q['open']}")
+    if q.get("last") is not None:
+        mk.append(f"Último {q['last']}")
+    if q.get("prev_close") is not None:
+        mk.append(f"Cierre ant. {q['prev_close']}")
+    if mk:
+        chg = ""
+        ca, cp = q.get("change_abs"), q.get("change_pct")
+        if ca is not None and cp is not None:
+            color = "#16a34a" if ca >= 0 else "#dc2626"
+            sign = "+" if ca >= 0 else "−"
+            chg = (f' · <span style="color:{color};font-weight:700">'
+                   f'{sign}{abs(ca)} {ccy} ({cp:+.2f}%) hoy</span>')
+        out += f'<div style="font-size:12px;color:#64748b;padding-top:10px">{" · ".join(mk)} {ccy}{chg}</div>'
+
+    if pos.get("avg_cost") is not None:
+        pp = pos.get("pnl_pct") or 0
+        pb = pos.get("pnl_base")
+        color = "#16a34a" if pp >= 0 else "#dc2626"
+        money = ""
+        if pb is not None:
+            s = "+" if pb >= 0 else "−"
+            money = (f"{s}{base_symbol}{abs(pb):,.0f}".replace(",", ".")) + " "
+        partial = ' <span style="color:#94a3b8">· coste parcial</span>' if pos.get("pnl_partial") else ""
+        out += (f'<div style="font-size:12px;color:#475569;padding-top:4px">'
+                f'Mi posición · precio medio {pos["avg_cost"]} {ccy} · '
+                f'<span style="color:{color};font-weight:700">{money}({pp:+.1f}%)</span>{partial}</div>')
+
+    return out
+
+
 def render(stocks, totals, generated_at=None, base_symbol="$"):
     generated_at = generated_at or dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
@@ -140,9 +178,10 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
               <td align="left" valign="top"><span style="font-size:19px;font-weight:800">{html.escape(s['ticker'])}</span>
                 <span style="color:#64748b">{html.escape(s.get('name',''))}</span>{pos_line}</td>
               <td align="right" valign="top" style="white-space:nowrap"><span style="font-size:19px;font-weight:800">{_fmt(q.get('last'))} {ccy}</span>
-                <div style="font-size:12px;padding-top:3px">YTD {_pct(q.get('perf_ytd'))}</div>{value_html}</td>
+                <div style="font-size:12px;padding-top:3px">Hoy {_pct(q.get('change_pct'))} · YTD {_pct(q.get('perf_ytd'))}</div>{value_html}</td>
             </tr></table>
             {_range_bar(q)}
+            {_stats_row(q, pos, base_symbol)}
             {_badge(ins.get('bias', 0))}
             {insight_block}
             {_notes_block(s.get('notes'))}

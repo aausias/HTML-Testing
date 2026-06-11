@@ -17,17 +17,25 @@ portfolio:
   #   1) Lista tus posiciones a mano abajo (revolut_holdings)
   #   2) Exporta un CSV y déjalo en data/revolut_positions.csv
   #      (columnas: ticker,quantity,avg_price)
+  # avg_price = tu precio medio de compra (para calcular cuánto estás arriba/abajo).
+  # Los de abajo son ESTIMADOS a partir del rendimiento que mostraba Revolut;
+  # ajústalos con tus costes reales cuando quieras (IBKR sí trae el coste solo).
   revolut_holdings:
     - ticker: MELI
       quantity: 3.8
+      avg_price: 1577      # USD (estimado)
     - ticker: NVDA
       quantity: 20.89
+      avg_price: 179.7     # USD (estimado)
     - ticker: CLS
       quantity: 9.52
+      avg_price: 368       # USD (estimado)
     - ticker: FNV
       quantity: 15
+      avg_price: 283.6     # USD (estimado)
     - ticker: META
       quantity: 5.18
+      avg_price: 732.1     # USD (estimado)
 
   # Tickers extra a vigilar (solo noticias/insights, sin posición)
   watchlist: []
@@ -36,9 +44,10 @@ portfolio:
 market:
   # Stooq usa sufijos por bolsa. Tickers US planos reciben ".us" automático.
   # Añade overrides para bolsas no-US (ej. acciones europeas).
-  symbol_overrides: {}
-    # CLS: cls.us
-    # NVDA: nvda.us
+  # Para tickers no-US, indica el símbolo de Yahoo (Stooq usa la versión en minúsculas).
+  symbol_overrides:
+    VWCE: VWCE.DE   # Vanguard FTSE All-World (acc), Xetra/EUR. Si tu VWCE es de otra
+                    # bolsa, cámbialo: Milán VWCE.MI · Suiza VWCE.SW · Ámsterdam VWCE.AS
 
 news:
   max_items_per_ticker: 4

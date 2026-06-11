@@ -5,6 +5,7 @@ NAMES = {
     "MELI": "MercadoLibre",
     "FNV": "Franco-Nevada",
     "META": "Meta Platforms",
+    "VWCE": "Vanguard FTSE All-World (acc)",
     "AAPL": "Apple",
     "MSFT": "Microsoft",
     "GOOGL": "Alphabet",
