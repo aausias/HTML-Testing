@@ -30,6 +30,28 @@ _SNAPSHOT = os.path.join(os.path.dirname(__file__), "..", "data", "holdings_snap
 _NOTES = os.path.join(os.path.dirname(__file__), "..", "data", "notes.json")
 
 
+def _should_skip_now():
+    """En runs programados, solo continúa a la hora local objetivo.
+
+    Permite un único envío diario a las TARGET_HOUR de TARGET_TZ aunque el cron
+    de GitHub (UTC) dispare a varias horas para cubrir el cambio de hora (DST).
+    SCHEDULE_GUARD lo activa solo el workflow en ejecuciones 'schedule'.
+    """
+    if os.getenv("SCHEDULE_GUARD", "").lower() not in ("1", "true", "yes"):
+        return False
+    try:
+        from zoneinfo import ZoneInfo
+        tz = os.getenv("TARGET_TZ", "Europe/Madrid")
+        hour = int(os.getenv("TARGET_HOUR", "10"))
+        now = dt.datetime.now(ZoneInfo(tz))
+        if now.hour != hour:
+            print(f"[schedule] {now:%H:%M} {tz} ≠ {hour:02d}:00 objetivo; se omite esta ejecución.")
+            return True
+    except Exception as e:
+        print(f"[schedule] guard no aplicable ({e}); se continúa.")
+    return False
+
+
 def _load_notes():
     if os.path.exists(_NOTES):
         with open(_NOTES, encoding="utf-8") as f:
@@ -53,6 +75,8 @@ def _load_ibkr(cfg):
 
 
 def main():
+    if _should_skip_now():
+        return
     cfg = load_config()
     overrides = cfg.get("market", {}).get("symbol_overrides", {})
     base_ccy = cfg.get("portfolio", {}).get("base_currency", "EUR")

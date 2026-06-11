@@ -72,8 +72,11 @@ hace commit del `docs/index.html` actualizado en cada ejecución.
 
 ### Horario
 
-Edita los `cron` en `.github/workflows/dashboard.yml` (están en **UTC**).
-Por defecto: 13:00 UTC (pre-apertura) y 20:15 UTC (post-cierre), L–V.
+Envío diario a las **10:00 de Madrid** (Europe/Madrid), de lunes a viernes.
+El cron dispara a 08:00 y 09:00 UTC y el script (`SCHEDULE_GUARD` + `TARGET_TZ`/
+`TARGET_HOUR`) solo continúa cuando en Madrid son las 10:00, así llega a la
+misma hora local en verano e invierno. Para cambiarlo, edita `TARGET_TZ` /
+`TARGET_HOUR` y los `cron` en `.github/workflows/dashboard.yml`.
 
 ## Aviso
 

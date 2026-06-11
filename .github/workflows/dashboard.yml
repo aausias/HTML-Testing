@@ -2,10 +2,12 @@ name: Stock Dashboard
 
 on:
   schedule:
-    # Horas en UTC. Mercado US: ~13:30 UTC apertura, ~20:00 UTC cierre (horario de verano).
-    - cron: "0 13 * * 1-5"   # pre-apertura (mañana)
-    - cron: "15 20 * * 1-5"  # post-cierre (tarde/noche)
-  workflow_dispatch: {}        # permite ejecutarlo a mano desde la pestaña Actions
+    # GitHub cron es UTC y no maneja DST. Disparamos a 08:00 y 09:00 UTC L-V;
+    # el script (SCHEDULE_GUARD) solo continúa cuando en Madrid son las 10:00,
+    # así el email llega a las 10:00 locales todo el año (verano e invierno).
+    - cron: "0 8 * * 1-5"
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch: {}        # ejecución manual (sin guard de hora) desde Actions
 
 permissions:
   contents: write
@@ -25,6 +27,9 @@ jobs:
 
       - name: Generar dashboard y enviar email
         env:
+          TARGET_TZ: "Europe/Madrid"
+          TARGET_HOUR: "10"
+          SCHEDULE_GUARD: ${{ github.event_name == 'schedule' }}
           IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
           IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
