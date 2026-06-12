@@ -28,28 +28,52 @@ from names import name_for
 
 _SNAPSHOT = os.path.join(os.path.dirname(__file__), "..", "data", "holdings_snapshot.json")
 _NOTES = os.path.join(os.path.dirname(__file__), "..", "data", "notes.json")
+_LAST_SENT = os.path.join(os.path.dirname(__file__), "..", "data", "last_sent.txt")
+
+
+def _guard_active():
+    return os.getenv("SCHEDULE_GUARD", "").lower() in ("1", "true", "yes")
+
+
+def _now_local():
+    from zoneinfo import ZoneInfo
+    return dt.datetime.now(ZoneInfo(os.getenv("TARGET_TZ", "Europe/Madrid")))
 
 
 def _should_skip_now():
-    """En runs programados, solo continúa a la hora local objetivo.
+    """En runs programados: envía UNA vez al día, a partir de la hora objetivo.
 
-    Permite un único envío diario a las TARGET_HOUR de TARGET_TZ aunque el cron
-    de GitHub (UTC) dispare a varias horas para cubrir el cambio de hora (DST).
-    SCHEDULE_GUARD lo activa solo el workflow en ejecuciones 'schedule'.
+    El cron de GitHub es "best-effort" y puede llegar con horas de retraso, así
+    que en vez de exigir una hora exacta, disparamos varias veces por la mañana
+    y enviamos en cuanto sea >= TARGET_HOUR (hora local), evitando duplicados con
+    un sello en data/last_sent.txt. SCHEDULE_GUARD lo activa solo el workflow.
     """
-    if os.getenv("SCHEDULE_GUARD", "").lower() not in ("1", "true", "yes"):
+    if not _guard_active():
         return False
     try:
-        from zoneinfo import ZoneInfo
-        tz = os.getenv("TARGET_TZ", "Europe/Madrid")
         hour = int(os.getenv("TARGET_HOUR", "10"))
-        now = dt.datetime.now(ZoneInfo(tz))
-        if now.hour != hour:
-            print(f"[schedule] {now:%H:%M} {tz} ≠ {hour:02d}:00 objetivo; se omite esta ejecución.")
+        now = _now_local()
+        today = now.date().isoformat()
+        if os.path.exists(_LAST_SENT) and open(_LAST_SENT, encoding="utf-8").read().strip() == today:
+            print(f"[schedule] ya enviado hoy ({today}); se omite.")
+            return True
+        if now.hour < hour:
+            print(f"[schedule] {now:%H:%M} < {hour:02d}:00 objetivo; aún no toca.")
             return True
     except Exception as e:
         print(f"[schedule] guard no aplicable ({e}); se continúa.")
     return False
+
+
+def _mark_sent_today():
+    """Sella el envío del día (solo en modo programado) para no duplicar."""
+    if not _guard_active():
+        return
+    try:
+        with open(_LAST_SENT, "w", encoding="utf-8") as f:
+            f.write(_now_local().date().isoformat() + "\n")
+    except Exception:
+        pass
 
 
 def _load_notes():
@@ -183,6 +207,8 @@ def main():
         today = dt.date.today().isoformat()
         subject = f"{cfg['delivery'].get('email_subject_prefix', 'Dashboard')} — {today}"
         send_email(htmlout, subject, cfg["delivery"].get("email_to"))
+
+    _mark_sent_today()
 
 
 if __name__ == "__main__":
