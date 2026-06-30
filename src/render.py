@@ -144,11 +144,15 @@ def _sparkline(q, base_symbol=""):
     color = {"alcista": "#16a34a", "bajista": "#dc2626"}.get(trend, "#64748b")
     H = 64  # alto del gráfico (antes 34) -> más legible
     w = round(100.0 / len(spark), 3)
-    bars = "".join(
-        f'<td valign="bottom" width="{w}%" style="padding:0 1px">'
-        f'<div style="height:{10 + round((v - lo) / rng * (H - 12))}px;background:{color};opacity:.9;border-radius:2px 2px 0 0"></div></td>'
-        for v in spark
-    )
+    bars = ""
+    for v in spark:
+        h = 10 + round((v - lo) / rng * (H - 12))
+        # div con contenido (&nbsp;) y line-height: Gmail colapsa los divs vacíos
+        bars += (
+            f'<td valign="bottom" width="{w}%" style="padding:0 1px;font-size:0;line-height:0">'
+            f'<div style="height:{h}px;line-height:{h}px;font-size:1px;background:{color};'
+            f'border-radius:2px 2px 0 0">&nbsp;</div></td>'
+        )
     ccy = html.escape(q.get("currency", ""))
     cap = f'Tendencia ~3m: <b style="color:{color}">{html.escape(trend)}</b>'
     if "above_sma50" in q:
