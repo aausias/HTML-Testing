@@ -183,7 +183,8 @@ def _levels_box(plan):
         <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🎯 Profit sugerido</div>
         <div style="font-size:17px;font-weight:800;color:#16a34a;padding-top:2px">{ccy} {plan.get('target')}</div>
         <div style="font-size:11px;color:#15803d">+{plan.get('target_pct')}% del precio actual</div></div></td>
-    </tr></table>"""
+    </tr></table>
+    {f'<div style="font-size:11px;color:#94a3b8;padding-top:5px">Stop calculado por {html.escape(plan["basis"])} · riesgo-recompensa ~1.8:1</div>' if plan.get('basis') else ''}"""
 
 
 def _plan_section(stocks):
@@ -215,6 +216,76 @@ def _plan_section(stocks):
         <div style="font-size:16px;font-weight:800;color:#fff">🎯 Plan de acción <span style="font-size:11px;color:#94a3b8;font-weight:600">· orientativo</span></div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table>
         <div style="font-size:11px;color:#64748b;padding-top:14px;line-height:1.5">⚠️ Etiquetas y niveles generados automáticamente (reglas + IA) a partir del rango de 52 semanas y tu P&amp;L. <b>No es asesoramiento financiero</b> ni una recomendación de compra/venta — son una guía para tu propia decisión.</div>
+      </td></tr></table>
+    </td></tr>"""
+
+
+def _money(sym, v):
+    if v is None:
+        return "—"
+    s = "+" if v >= 0 else "−"
+    return f"{s}{sym}{abs(v):,.0f}".replace(",", ".")
+
+
+def _movements_section(stocks, base_symbol):
+    """Lista de posiciones con variación del día y P&G, + totales de cartera."""
+    rows = ""
+    tot_val = tot_pnl = tot_cost = tot_day = 0.0
+    any_row = False
+    for s in stocks:
+        pos = s.get("position") or {}
+        q = s.get("quote") or {}
+        if not pos.get("quantity"):
+            continue
+        any_row = True
+        vb = pos.get("value_base") or 0
+        cp = q.get("change_pct")
+        day = vb * (cp / 100.0) if (vb and cp is not None) else None
+        pnl, pp = pos.get("pnl_base"), pos.get("pnl_pct")
+        tot_val += vb
+        if day is not None:
+            tot_day += day
+        if pnl is not None:
+            tot_pnl += pnl
+            tot_cost += vb - pnl
+
+        day_c = "#16a34a" if (cp or 0) >= 0 else "#dc2626"
+        pnl_c = "#16a34a" if (pp or 0) >= 0 else "#dc2626"
+        day_txt = "—" if cp is None else f'{cp:+.2f}% <span style="color:#94a3b8">({_money(base_symbol, day)})</span>'
+        pnl_txt = "—" if pnl is None else f'{_money(base_symbol, pnl)} <span style="color:#94a3b8">({pp:+.1f}%)</span>'
+        rows += (
+            f'<tr>'
+            f'<td style="padding:7px 0;border-top:1px solid #f1f5f9;font-weight:700">{html.escape(s["ticker"])}</td>'
+            f'<td style="padding:7px 0;border-top:1px solid #f1f5f9;text-align:right;color:{day_c};font-weight:600">{day_txt}</td>'
+            f'<td style="padding:7px 0;border-top:1px solid #f1f5f9;text-align:right;color:{pnl_c};font-weight:700">{pnl_txt}</td>'
+            f'</tr>'
+        )
+    if not any_row:
+        return ""
+
+    glob_pct = (tot_pnl / tot_cost * 100) if tot_cost else 0
+    day_pct = (tot_day / (tot_val - tot_day) * 100) if (tot_val - tot_day) else 0
+    gpnl_c = "#16a34a" if tot_pnl >= 0 else "#dc2626"
+    gday_c = "#16a34a" if tot_day >= 0 else "#dc2626"
+
+    return f"""
+    <tr><td style="padding-bottom:16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:14px"><tr><td style="padding:18px">
+        <div style="font-size:16px;font-weight:800;color:#0f172a;padding-bottom:12px">📋 Posiciones · variación de hoy y P&amp;G</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding:6px 12px;background:#f8fafc;border-radius:8px">
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.04em">Variación de hoy</div>
+            <div style="font-size:18px;font-weight:800;color:{gday_c}">{_money(base_symbol, tot_day)} <span style="font-size:13px">({day_pct:+.2f}%)</span></div></td>
+          <td style="width:10px"></td>
+          <td style="padding:6px 12px;background:#f8fafc;border-radius:8px">
+            <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.04em">P&amp;G no realizado (global)</div>
+            <div style="font-size:18px;font-weight:800;color:{gpnl_c}">{_money(base_symbol, tot_pnl)} <span style="font-size:13px">({glob_pct:+.1f}%)</span></div></td></tr>
+        </table>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;font-size:13px;color:#334155">
+          <tr style="color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
+            <td style="text-align:left">Acción</td><td style="text-align:right">Hoy</td><td style="text-align:right">P&amp;G total</td></tr>
+          {rows}
+        </table>
       </td></tr></table>
     </td></tr>"""
 
@@ -305,6 +376,7 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
       {_alloc_bar(stocks, total_val)}
     </td></tr></table>
   </td></tr>
+  {_movements_section(stocks, base_symbol)}
   {cards}
   {_plan_section(stocks)}
   <tr><td style="padding:8px 8px 0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.5">

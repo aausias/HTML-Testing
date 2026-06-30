@@ -121,37 +121,56 @@ def llm_analyze(ticker, quote, news, notes, model):
 
 
 def action_levels(quote, pos):
-    """Niveles ILUSTRATIVOS de stop/objetivo y una acción sugerida por reglas.
+    """Niveles ILUSTRATIVOS de stop/profit basados en la ESTRUCTURA de cada acción.
 
-    No es asesoramiento: usa la posición del precio en su rango de 52s y el P&L.
+    Stop: debajo de un soporte reciente o a ~2.2x su volatilidad diaria (ATR),
+    lo que dé un nivel razonable (no un % fijo). Profit: resistencia reciente o
+    una relación riesgo-recompensa ~1.8:1. Así cada acción tiene niveles propios.
+    No es asesoramiento.
     """
     q = quote or {}
-    last, hi, lo = q.get("last"), q.get("high_52w"), q.get("low_52w")
+    last = q.get("last")
     if not last:
         return None
+    hi, lo = q.get("high_52w"), q.get("low_52w")
     posr = (last - lo) / (hi - lo) if (hi and lo and hi > lo) else 0.5
+
+    atr_pct = q.get("atr_pct") or 3.0
+    atr_abs = atr_pct / 100.0 * last
+    low20 = q.get("low_20") or last * 0.9
+    high60 = q.get("high_60") or last * 1.1
+    hi52 = hi or last * 1.2
+
+    # --- STOP: el más cercano (más alto) entre 'bajo el soporte' y '2.2x ATR' ---
+    support_stop = low20 * 0.985
+    vol_stop = last - 2.2 * atr_abs
+    stop = max(support_stop, vol_stop)
+    stop = min(stop, last * 0.97)      # nunca demasiado pegado
+    stop = max(stop, last * 0.78)      # ni absurdamente lejos
+    risk = last - stop
+
+    # --- PROFIT: resistencia reciente / 52s, con mínimo de riesgo-recompensa 1.8:1 ---
+    res_target = high60 * 1.01 if high60 > last * 1.02 else hi52
+    target = max(last + 1.8 * risk, res_target or 0)
+    target = max(target, last * 1.05)
+    target = min(target, last * 1.45)
+
     pnl = (pos or {}).get("pnl_pct")
-
-    if posr >= 0.85:          # cerca de máximos: proteger ganancias
-        stop_pct, tgt_pct = 0.10, 0.10
-    elif posr <= 0.25:        # cerca de mínimos: stop ajustado, recuperación amplia
-        stop_pct, tgt_pct = 0.08, 0.25
-    else:
-        stop_pct, tgt_pct = 0.12, 0.18
-
+    trend = q.get("trend", "lateral")
     if pnl is not None and pnl >= 25 and posr >= 0.8:
         action = "TOMAR BENEFICIOS"
-    elif (pnl is not None and pnl <= -15) or posr <= 0.2:
+    elif (pnl is not None and pnl <= -15) or posr <= 0.2 or (trend == "bajista" and not q.get("above_sma50", True)):
         action = "VIGILAR / STOP"
     else:
         action = "MANTENER"
 
     return {
         "action": action,
-        "stop": round(last * (1 - stop_pct), 2),
-        "stop_pct": round(stop_pct * 100),
-        "target": round(last * (1 + tgt_pct), 2),
-        "target_pct": round(tgt_pct * 100),
+        "stop": round(stop, 2),
+        "stop_pct": round((1 - stop / last) * 100),
+        "target": round(target, 2),
+        "target_pct": round((target / last - 1) * 100),
+        "basis": "soporte 20d / volatilidad" if vol_stop < support_stop else "volatilidad (ATR)",
     }
 
 

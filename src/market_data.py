@@ -69,6 +69,16 @@ def _from_series(ticker, closes, dates, opens=None, currency="USD", source="Stoo
     else:
         trend = "lateral"
 
+    # Soportes/resistencias recientes y volatilidad (para stop/profit no lineales)
+    def _mm(n):
+        w = closes[-n:]
+        return (round(min(w), 2), round(max(w), 2)) if w else (None, None)
+
+    low20, high20 = _mm(20)
+    low60, high60 = _mm(60)
+    rets = [abs(closes[i] / closes[i - 1] - 1) for i in range(max(1, len(closes) - 20), len(closes)) if closes[i - 1]]
+    atr_pct = round(sum(rets) / len(rets) * 100, 2) if rets else None
+
     def perf(n):
         return round((last / closes[-n] - 1) * 100, 2) if len(closes) >= n else None
 
@@ -92,6 +102,11 @@ def _from_series(ticker, closes, dates, opens=None, currency="USD", source="Stoo
         "perf_ytd": ytd,
         "high_52w": round(max(window), 2),
         "low_52w": round(min(window), 2),
+        "low_20": low20,
+        "high_20": high20,
+        "low_60": low60,
+        "high_60": high60,
+        "atr_pct": atr_pct,
         "spark": spark,
         "trend": trend,
         "above_sma50": bool(sma50 and last >= sma50),
