@@ -1,0 +1,8 @@
+{
+  "_comment": "Snapshot de respaldo de posiciones IBKR (capturado 2026-06-06 vía MCP). Se usa solo si el Flex Web Service no está configurado. Las posiciones reales se actualizan solas cuando configuras IBKR_FLEX_TOKEN / IBKR_FLEX_QUERY_ID.",
+  "captured_at": "2026-06-06",
+  "ibkr": [
+    {"ticker": "CLS", "quantity": 10.8343, "avg_price": 369.29, "currency": "USD", "market_value": 4029.06, "source": "IBKR"},
+    {"ticker": "NVDA", "quantity": 14.6285, "avg_price": 205.15, "currency": "USD", "market_value": 2985.53, "source": "IBKR"}
+  ]
+}
