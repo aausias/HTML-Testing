@@ -33,9 +33,7 @@ portfolio:
     - ticker: FNV
       quantity: 15
       avg_price: 283.6     # USD (estimado)
-    - ticker: META
-      quantity: 5.18
-      avg_price: 732.1     # USD (estimado)
+    # META: vendida por completo el 2026-09-22 a $743 (posición cerrada)
 
   # Tickers extra a vigilar (solo noticias/insights, sin posición)
   watchlist: []
