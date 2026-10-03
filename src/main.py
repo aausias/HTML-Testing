@@ -83,6 +83,38 @@ def _load_notes():
     return {}
 
 
+_MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def _fmt_date_es(iso):
+    y, m, d = (int(x) for x in iso.split("-"))
+    return f"{d} {_MESES[m - 1]} {y}"
+
+
+def _resolve_earnings(ticker, note, today_iso):
+    """Próxima fecha de resultados: automática (Nasdaq) > notes.json; nunca una ya pasada."""
+    if note.get("no_earnings"):          # p. ej. un ETF
+        return note
+    auto = market_data.get_next_earnings(ticker)
+    if auto and auto["date"] >= today_iso:
+        print(f"[resultados] {ticker}: {auto['date']} (automático)")
+        note["earnings_iso"] = auto["date"]
+        note["earnings_date"] = _fmt_date_es(auto["date"]) + (f" ({auto['when']})" if auto.get("when") else "")
+        if auto.get("eps") is not None:
+            note["estimate"] = f"BPA de consenso ~${auto['eps']:.2f}"
+        return note
+    iso = note.get("earnings_iso")
+    if iso and iso >= today_iso:
+        print(f"[resultados] {ticker}: {iso} (notes.json)")
+        return note
+    if iso:
+        print(f"[resultados] {ticker}: la fecha de notes.json ({iso}) ya pasó; se oculta")
+    for k in ("earnings_iso", "earnings_date", "estimate"):
+        note.pop(k, None)
+    note["earnings_date"] = "próxima fecha por confirmar"
+    return note
+
+
 def _load_ibkr(cfg):
     """Intenta IBKR Flex; si no hay credenciales, usa el snapshot de respaldo."""
     if cfg.get("portfolio", {}).get("ibkr_enabled", True):
@@ -128,6 +160,8 @@ def main():
 
     use_llm = cfg.get("insights", {}).get("use_llm")
     llm_model = cfg.get("insights", {}).get("llm_model", "claude-haiku-4-5-20251001")
+    today_iso = _now_local().date().isoformat()
+    today_txt = _fmt_date_es(today_iso)
 
     stocks = []
     for item in consolidated:
@@ -135,12 +169,12 @@ def main():
         quote = market_data.get_quote(ticker, overrides)
         headlines = news_mod.get_news(ticker, cfg["news"].get("max_items_per_ticker", 4))
         insight = insights.build(ticker, quote, headlines, cfg)
-        note = dict(notes.get(ticker) or {})
+        note = _resolve_earnings(ticker, dict(notes.get(ticker) or {}), today_iso)
 
         # IA: regenera resumen + corto/mediano plazo (si está activado y hay API key)
         ai = None
         if use_llm:
-            ai = insights.llm_analyze(ticker, quote, headlines, note, llm_model)
+            ai = insights.llm_analyze(ticker, quote, headlines, note, llm_model, today=today_txt)
             if ai:
                 if ai.get("summary"):
                     insight["llm_summary"] = ai["summary"]

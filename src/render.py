@@ -178,13 +178,15 @@ def _levels_box(plan):
       <td valign="top" width="50%" style="padding-right:5px"><div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 11px">
         <div style="font-size:11px;color:#991b1b;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🛑 Stop sugerido</div>
         <div style="font-size:17px;font-weight:800;color:#dc2626;padding-top:2px">{ccy} {plan.get('stop')}</div>
-        <div style="font-size:11px;color:#b91c1c">−{plan.get('stop_pct')}% del precio actual</div></div></td>
+        <div style="font-size:11px;color:#b91c1c">−{plan.get('stop_pct')}% del precio actual</div>
+        <div style="font-size:11px;color:#7f1d1d;padding-top:4px;line-height:1.4">{html.escape(plan.get('basis') or '')}</div></div></td>
       <td valign="top" width="50%" style="padding-left:5px"><div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:9px 11px">
         <div style="font-size:11px;color:#166534;font-weight:700;text-transform:uppercase;letter-spacing:.03em">🎯 Profit sugerido</div>
         <div style="font-size:17px;font-weight:800;color:#16a34a;padding-top:2px">{ccy} {plan.get('target')}</div>
-        <div style="font-size:11px;color:#15803d">+{plan.get('target_pct')}% del precio actual</div></div></td>
+        <div style="font-size:11px;color:#15803d">+{plan.get('target_pct')}% del precio actual</div>
+        <div style="font-size:11px;color:#14532d;padding-top:4px;line-height:1.4">{html.escape(plan.get('target_basis') or '')}</div></div></td>
     </tr></table>
-    {f'<div style="font-size:11px;color:#94a3b8;padding-top:5px">Stop calculado por {html.escape(plan["basis"])} · riesgo-recompensa ~1.8:1</div>' if plan.get('basis') else ''}"""
+    <div style="font-size:11px;color:#94a3b8;padding-top:5px">Esta acción se mueve ~{plan.get('atr_pct')}% en un día normal (ATR) · riesgo-recompensa {plan.get('rr')}:1</div>"""
 
 
 def _plan_section(stocks):
