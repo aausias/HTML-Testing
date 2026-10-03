@@ -1,0 +1,51 @@
+name: Stock Dashboard
+
+on:
+  schedule:
+    # GitHub cron es "best-effort" y suele retrasarse (a veces horas). Por eso
+    # disparamos varias veces por la mañana (UTC) y el script envía UNA sola vez
+    # al día en cuanto en Madrid son las 10:00 o más (con sello anti-duplicado).
+    # Cubre verano (10:00 Madrid = 08:00 UTC) e invierno (= 09:00 UTC) y retrasos.
+    - cron: "5,35 6-12 * * 1-5"
+  workflow_dispatch: {}        # ejecución manual (sin guard de hora) desde Actions
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Generar dashboard y enviar email
+        env:
+          TARGET_TZ: "Europe/Madrid"
+          TARGET_HOUR: "10"
+          SCHEDULE_GUARD: ${{ github.event_name == 'schedule' }}
+          IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
+          IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python src/main.py
+
+      - name: Publicar dashboard web (commit de docs/)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git add data/last_sent.txt 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "Sin cambios en el dashboard."
+          else
+            git commit -m "chore: actualizar dashboard $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
