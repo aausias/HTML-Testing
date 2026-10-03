@@ -155,8 +155,8 @@ def action_levels(quote, pos):
     atr = q.get("atr") or last * (q.get("atr_pct") or 2.5) / 100
 
     # --- STOP: soporte más cercano por debajo, a 1.5-4 ATR del precio ---
-    supports = [(q.get("low_20"), "mínimo de 20 días"), (q.get("sma50"), "media de 50 días"),
-                (q.get("low_60"), "mínimo de 60 días")]
+    supports = [(q.get("low_20"), "el mínimo de 20 días"), (q.get("sma50"), "la media de 50 días"),
+                (q.get("low_60"), "el mínimo de 60 días")]
     supports = sorted([s for s in supports if s[0] and s[0] < last], key=lambda s: -s[0])
     stop, basis = None, None
     for lvl, name in supports:
@@ -164,7 +164,7 @@ def action_levels(quote, pos):
         if last - cand < 1.5 * atr:      # demasiado pegado: probar el siguiente soporte
             continue
         if last - cand <= 4 * atr:
-            stop, basis = cand, f"bajo el {name} ({lvl:.2f})"
+            stop, basis = cand, f"bajo {name} ({lvl:.2f})"
         break
     if stop is None:
         stop, basis = last - 2.5 * atr, "2,5 veces su volatilidad diaria (sin soporte cercano claro)"
@@ -172,12 +172,12 @@ def action_levels(quote, pos):
     risk = last - stop
 
     # --- PROFIT: resistencia más cercana que pague >= 1.5x el riesgo; si no, 2R ---
-    resist = [(q.get("high_60"), "máximo de 60 días"), (q.get("high_52w"), "máximo de 52 semanas")]
+    resist = [(q.get("high_60"), "el máximo de 60 días"), (q.get("high_52w"), "el máximo de 52 semanas")]
     resist = sorted([r for r in resist if r[0] and r[0] > last], key=lambda r: r[0])
     target, target_basis = None, None
     for lvl, name in resist:
         if lvl - last >= 1.5 * risk:
-            target, target_basis = lvl, f"resistencia en el {name} ({lvl:.2f})"
+            target, target_basis = lvl, f"resistencia en {name} ({lvl:.2f})"
             break
     if target is None:
         target, target_basis = last + 2 * risk, "2 veces el riesgo (sin resistencia útil por encima)"
