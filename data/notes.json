@@ -1,0 +1,26 @@
+{
+  "_comment": "Respaldo de la próxima fecha de resultados por ticker. El dashboard intenta obtenerla sola (Nasdaq) en cada ejecución; si no puede, usa esta. Una fecha ya pasada se oculta automáticamente ('por confirmar'). El corto/mediano plazo lo escribe la IA cada día, no se guarda aquí.",
+  "CLS": {
+    "earnings_iso": "2026-10-26",
+    "earnings_date": "26 oct 2026 · Q3 2026",
+    "estimate": "BPA aj. ~$3,04 (guía $2,88–3,08)"
+  },
+  "MELI": {
+    "earnings_iso": "2026-11-04",
+    "earnings_date": "4 nov 2026 (tras cierre) · Q3 2026",
+    "estimate": "BPA ~$9,25"
+  },
+  "FNV": {
+    "earnings_iso": "2026-11-10",
+    "earnings_date": "10 nov 2026 (tras cierre) · Q3 2026"
+  },
+  "NVDA": {
+    "earnings_iso": "2026-11-25",
+    "earnings_date": "~25 nov 2026 (estimada) · Q3 FY27",
+    "estimate": "BPA ~$2,47 · ingresos ~$108,9B (guía $108B ±2%)"
+  },
+  "VWCE": {
+    "no_earnings": true,
+    "earnings_date": "No aplica (ETF: no presenta resultados trimestrales)"
+  }
+}
