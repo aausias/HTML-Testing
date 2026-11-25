@@ -296,6 +296,8 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
     generated_at = generated_at or dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
     total_val = sum((s.get("position") or {}).get("value_base") or 0 for s in stocks)
+    srcs = sorted({src for s in stocks for src in (s.get("position") or {}).get("sources", []) if src != "watchlist"})
+    sources_txt = " + ".join(srcs) or "IBKR"
 
     cards = ""
     for s in stocks:
@@ -369,7 +371,7 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;width:100%">
   <tr><td style="padding-bottom:4px">
     <div style="font-size:24px;font-weight:800">📊 Tu Dashboard de Acciones</div>
-    <div style="color:#64748b;font-size:13px;padding-top:4px">{html.escape(generated_at)} · IBKR + Revolut</div>
+    <div style="color:#64748b;font-size:13px;padding-top:4px">{html.escape(generated_at)} · {html.escape(sources_txt)}</div>
   </td></tr>
   <tr><td style="padding:16px 0">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border-radius:14px"><tr><td style="padding:20px">
@@ -384,7 +386,7 @@ def render(stocks, totals, generated_at=None, base_symbol="$"):
   <tr><td style="padding:8px 8px 0;color:#94a3b8;font-size:11px;text-align:center;line-height:1.5">
     Las barras muestran la posición del precio en su rango de 52 semanas.<br>
     Información con fines informativos, <b>no es asesoramiento de inversión</b>.<br>
-    Precios/posiciones: IBKR + Revolut · Datos de mercado: Stooq · Noticias: Yahoo Finance / Google News.
+    Posiciones: {html.escape(sources_txt)} · Datos de mercado: Stooq · Noticias: Yahoo Finance / Google News.
   </td></tr>
 </table>
 </td></tr></table>

@@ -1,7 +1,7 @@
 """Orquestador de la rutina diaria del dashboard de acciones.
 
 Flujo:
-  1. Carga posiciones de IBKR (Flex Web Service) + Revolut (config/CSV)
+  1. Carga posiciones de IBKR (Flex Web Service) y, si hubiera, de Revolut (config/CSV)
   2. Consolida por ticker
   3. Descarga precios (Stooq) y noticias (RSS) por acción
   4. Genera insights ("qué podría pasar")
