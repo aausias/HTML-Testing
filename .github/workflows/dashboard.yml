@@ -7,7 +7,12 @@ on:
     # al día en cuanto en Madrid son las 10:00 o más (con sello anti-duplicado).
     # Cubre verano (10:00 Madrid = 08:00 UTC) e invierno (= 09:00 UTC) y retrasos.
     - cron: "5,35 6-12 * * 1-5"
-  workflow_dispatch: {}        # ejecución manual (sin guard de hora) desde Actions
+  workflow_dispatch:           # disparo puntual (rutina de las 10:00) o manual
+    inputs:
+      force:
+        description: "Enviar aunque ya se haya enviado hoy (pruebas)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,6 +35,7 @@ jobs:
           TARGET_TZ: "Europe/Madrid"
           TARGET_HOUR: "10"
           SCHEDULE_GUARD: ${{ github.event_name == 'schedule' }}
+          FORCE_SEND: ${{ inputs.force || false }}
           IBKR_FLEX_TOKEN: ${{ secrets.IBKR_FLEX_TOKEN }}
           IBKR_FLEX_QUERY_ID: ${{ secrets.IBKR_FLEX_QUERY_ID }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}

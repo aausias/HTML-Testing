@@ -40,23 +40,32 @@ def _now_local():
     return dt.datetime.now(ZoneInfo(os.getenv("TARGET_TZ", "Europe/Madrid")))
 
 
-def _should_skip_now():
-    """En runs programados: envía UNA vez al día, a partir de la hora objetivo.
+def _already_sent_today():
+    try:
+        today = _now_local().date().isoformat()
+        return os.path.exists(_LAST_SENT) and open(_LAST_SENT, encoding="utf-8").read().strip() == today
+    except Exception:
+        return False
 
-    El cron de GitHub es "best-effort" y puede llegar con horas de retraso, así
-    que en vez de exigir una hora exacta, disparamos varias veces por la mañana
-    y enviamos en cuanto sea >= TARGET_HOUR (hora local), evitando duplicados con
-    un sello en data/last_sent.txt. SCHEDULE_GUARD lo activa solo el workflow.
+
+def _should_skip_now():
+    """Envía UNA sola vez al día (sello en data/last_sent.txt).
+
+    - Disparo puntual a las 10:00 (rutina externa vía workflow_dispatch): envía,
+      salvo que ya se haya enviado hoy. FORCE_SEND=true lo fuerza (pruebas).
+    - Cron de GitHub (respaldo, suele llegar tarde): solo si es >= TARGET_HOUR
+      local y nadie envió todavía hoy.
     """
+    if os.getenv("FORCE_SEND", "").lower() in ("1", "true", "yes"):
+        return False
+    if _already_sent_today():
+        print("[schedule] ya enviado hoy; se omite.")
+        return True
     if not _guard_active():
         return False
     try:
         hour = int(os.getenv("TARGET_HOUR", "10"))
         now = _now_local()
-        today = now.date().isoformat()
-        if os.path.exists(_LAST_SENT) and open(_LAST_SENT, encoding="utf-8").read().strip() == today:
-            print(f"[schedule] ya enviado hoy ({today}); se omite.")
-            return True
         if now.hour < hour:
             print(f"[schedule] {now:%H:%M} < {hour:02d}:00 objetivo; aún no toca.")
             return True
@@ -66,9 +75,7 @@ def _should_skip_now():
 
 
 def _mark_sent_today():
-    """Sella el envío del día (solo en modo programado) para no duplicar."""
-    if not _guard_active():
-        return
+    """Sella el envío del día para que ningún otro disparo lo duplique."""
     try:
         with open(_LAST_SENT, "w", encoding="utf-8") as f:
             f.write(_now_local().date().isoformat() + "\n")
